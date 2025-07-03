@@ -121,7 +121,7 @@ def buckets_average(subject_id_list, dataset_name_list, region, side):
         dataset = dataset_name_list[rep]
         mm_skeleton_path = f"/neurospin/dico/data/deep_folding/current/datasets/{dataset}/crops/2mm/{region}/mask/{side}crops"
 
-        file_path = f"{mm_skeleton_path}/{subject_id_list[rep]}_cropped_skeleton.nii.gz"
+        file_path = f"{mm_skeleton_path}/sub-{subject_id_list[rep]}_cropped_skeleton.nii.gz"
         if os.path.isfile(file_path):
             sum_vol = aims.read(file_path).astype(float)
             dim = sum_vol.shape
@@ -134,10 +134,11 @@ def buckets_average(subject_id_list, dataset_name_list, region, side):
     for subject_id, dataset_name in zip(subject_id_list, dataset_name_list):
         # dataset = 'UkBioBank' if dataset_name.lower(
         # ) in ['ukb', 'ukbiobank', 'projected_ukb'] else 'UkBioBank40'
-        dataset = dataset_name_list[rep]
+        dataset = "ABCD"
+        #dataset = dataset_name_list[rep]
         mm_skeleton_path = f"/neurospin/dico/data/deep_folding/current/datasets/{dataset}/crops/2mm/{region}/mask/{side}crops"
 
-        file_path = f"{mm_skeleton_path}/{subject_id}_cropped_skeleton.nii.gz"
+        file_path = f"{mm_skeleton_path}/sub-{subject_id}_cropped_skeleton.nii.gz"
         if os.path.isfile(file_path):
             vol = aims.read(file_path)
             if vol.np.shape != dim:
@@ -154,6 +155,7 @@ def buckets_average(subject_id_list, dataset_name_list, region, side):
             print(f'FileNotFound: {file_path}')
 
     # Normalize the accumulated volume
+    print(f"Number of subjects: {len(subject_id_list)}")
     sum_vol.np[:] /= len(subject_id_list)
     print(f"{sum_vol.shape}: max = {sum_vol.np.max()}")
     return sum_vol
@@ -356,7 +358,9 @@ def buckets_average_with_alignment(subject_id_list, dataset_name_list,
     dataset_name = dataset_name_list[0]
     # dataset = 'UkBioBank' if dataset_name.lower(
     #             ) in ['ukb', 'ukbiobank', 'projected_ukb'] else 'UkBioBank40'
-    dataset = dataset_name_list[0]
+    #dataset = dataset_name_list[0]
+    dataset = "ABCD"
+
     skel_path = f"/neurospin/dico/data/deep_folding/current/datasets/{dataset}/skeletons/2mm/{side}"
         
     def realign_one(subject_id):
@@ -424,10 +428,10 @@ def parse_args(argv):
         "-e", "--phenotype_column", type=str, default="predicted",
         help="Name of column phenotype")
     parser.add_argument(
-        "-t", "--nb_subjects_per_average", type=int, default=50,
+        "-t", "--nb_subjects_per_average", type=int, default=250,
         help="Number of subjects per average.")
     parser.add_argument(
-        "-n", "--nb_columns", type=int, default=7,
+        "-n", "--nb_columns", type=int, default=5,
         help="Number of columns for the Anatomist windows block.")
     parser.add_argument(
         "-l", "--nb_lines", type=int, default=1,
@@ -489,28 +493,58 @@ def visualize_averages_along_sorted_phenotype(params):
     if subject_column == "IID":
         phenotype_df["IID"] = phenotype_df["IID"].apply(lambda x : "sub-"+str(x))
 
-    phenotype_df = phenotype_df.sort_values(phenotype_column)
+    phenotype_df = phenotype_df.sort_values(phenotype_column,ascending=False)
     phenotype_df = phenotype_df.set_index(subject_column)
 
     ####################################
     # Grouping subjects to average
     ####################################
 
-    for i in range(0, len(phenotype_df), step):
-        list_idx = phenotype_df.index[i:i + step].to_numpy()
-        _dic_packages[i // step] = [f'{idx}' for idx in list_idx]
+    # for i in range(0, len(phenotype_df), step):
+    #     list_idx = phenotype_df.index[i:i + step].to_numpy()
+    #     _dic_packages[i // step] = [f'{idx}' for idx in list_idx]
 
-    # Ensures that last list contains the last step subjects
-    list_idx = (phenotype_df.index[-step:].to_numpy())
-    _dic_packages[i//step] = list_idx
+    # # Ensures that last list contains the last step subjects
+    # list_idx = (phenotype_df.index[-step:].to_numpy())
+    # _dic_packages[i//step] = list_idx
 
-    list_database = [dataset] * step
-    n_pack = len(_dic_packages)
+    # list_database = [dataset] * step
+    # n_pack = len(_dic_packages)
+
+    _dic_packages = {}
+    for i, start in enumerate(range(0, len(phenotype_df), step)):
+        list_idx = phenotype_df.index[start:start + step].to_numpy()
+        _dic_packages[i] = [f'{idx}' for idx in list_idx]
+
+    n_pack = len(_dic_packages) 
+    print(f"Nombre de paquets de sujets: {n_pack}")
+
+
+
 
     # Process each package of subjects
-    list_pack = [int(np.ceil(i*n_pack/float(nb_windows)))
-                 for i in range(0, nb_windows)]
-    list_pack[-1] = n_pack-1
+    # list_pack = [int(np.ceil(i*n_pack/float(nb_windows)))
+    #              for i in range(0, nb_windows)]
+    # list_pack[-1] = n_pack-1
+    #list_pack = [min(int(np.floor(i * n_pack / float(nb_windows))), n_pack - 1) for i in range(nb_windows)]
+    list_pack = sorted(set([
+        0,                      # début
+        1,                      # tout début
+        n_pack // 3,            # tiers
+        2 * n_pack // 3,        # deux tiers
+        n_pack - 2              # fin
+    ]))
+
+    # Affichage pour vérifier les valeurs de phénotype
+    for k in list_pack:
+        subjects = _dic_packages[k]
+        phenos = phenotype_df.loc[subjects, phenotype_column].values
+        print(f"Paquet {k}: min={np.nanmin(phenos):.2f}, max={np.nanmax(phenos):.2f}, moy={np.nanmean(phenos):.2f}")
+
+
+
+    list_pack = [i for i in list_pack if i in _dic_packages]
+    print("LIST_PACK:", list_pack)
 
     ####################################
     # Averaging for each group of subjects
@@ -518,6 +552,8 @@ def visualize_averages_along_sorted_phenotype(params):
     raw_avgs = []
     print("Longueur list_pack", len(list_pack))
     for i in list_pack:
+        subjects = _dic_packages[i]
+        list_database = [dataset] * len(subjects)
         if alignment:
             sum_vol = buckets_average_with_alignment(_dic_packages[i], list_database,
                                                      region, side, nb_processors)
@@ -586,15 +622,15 @@ def visualize_averages_along_sorted_phenotype(params):
 
     build_gradient(pal)
     vmin, vmax = float(diff_np.min()), float(diff_np.max())
-    print("DEBUG",vmin,vmax)
+    #print("DEBUG",vmin,vmax)
 
 
 
     vals = diff_np.flatten()
     import matplotlib.pyplot as plt
-    print("min, 1er quartile, médiane, 3e quartile, max =",
-        np.percentile(vals, [0, 25, 50, 75, 100]))
-    print("pourcentage de voxels non nuls =", (vals!=0).mean()*100, "%")
+    #print("min, 1er quartile, médiane, 3e quartile, max =",
+        #np.percentile(vals, [0, 25, 50, 75, 100]))
+    #print("pourcentage de voxels non nuls =", (vals!=0).mean()*100, "%")
 
     # Volume‐rendering fusion
     r_diff = a.fusionObjects(
