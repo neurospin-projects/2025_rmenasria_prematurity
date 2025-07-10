@@ -487,68 +487,49 @@ def visualize_averages_along_sorted_phenotype(params):
     # Dataframe manipulations
     ####################################
 
-    # Load sorted projections (a .csv file)
+    # Load sorted projections
     phenotype_df = pd.read_csv(phenotype_file)
 
+    # Reformat the subject column
     if subject_column == "IID":
-        phenotype_df["IID"] = phenotype_df["IID"].apply(lambda x : "sub-"+str(x))
+        phenotype_df["IID"] = phenotype_df["IID"].apply(lambda x: "sub-"+str(x))
 
-    phenotype_df = phenotype_df.sort_values(phenotype_column,ascending=True)
-    phenotype_df = phenotype_df.set_index(subject_column)   
+    # Sort the DataFrame by the phenotype column
+    phenotype_df = (
+        phenotype_df
+        .sort_values(phenotype_column, ascending=True)
+        .reset_index(drop=True)       # Reset index after sorting
+    )
 
     ####################################
     # Grouping subjects to average
     ####################################
 
-    # for i in range(0, len(phenotype_df), step):
-    #     list_idx = phenotype_df.index[i:i + step].to_numpy()
-    #     _dic_packages[i // step] = [f'{idx}' for idx in list_idx]
-
-    # # Ensures that last list contains the last step subjects
-    # list_idx = (phenotype_df.index[-step:].to_numpy())
-    # _dic_packages[i//step] = list_idx
-
-    # list_database = [dataset] * step
-    # n_pack = len(_dic_packages)
-
     _dic_packages = {}
     for i, start in enumerate(range(0, len(phenotype_df), step)):
-        list_idx = phenotype_df.index[start:start + step].to_numpy()
-        _dic_packages[i] = [f'{idx}' for idx in list_idx]
+        stop = min(start + step, len(phenotype_df))
+        # Create a range of indices for the current package
+        _dic_packages[i] = np.arange(start, stop)
 
-    n_pack = len(_dic_packages) 
+    n_pack = len(_dic_packages)
     print(f"Nombre de paquets de sujets: {n_pack}")
 
-
-
-
-    # Process each package of subjects
-    # list_pack = [int(np.ceil(i*n_pack/float(nb_windows)))
-    #              for i in range(0, nb_windows)]
-    # list_pack[-1] = n_pack-1
-    #list_pack = [min(int(np.floor(i * n_pack / float(nb_windows))), n_pack - 1) for i in range(nb_windows)]
-
-
+    # Select a few packages to visualize
     list_pack = sorted(set([
-        0,                      # début
-        1,                      # tout début
-        n_pack // 3,            # tiers
-        2 * n_pack // 3,        # deux tiers
-        n_pack - 2              # fin
+        0,
+        1,
+        n_pack // 3,
+        2 * n_pack // 3,
+        n_pack - 2,
     ]))
 
-    # Affichage pour vérifier les valeurs de phénotype
+    # Display the min, max, and mean values of the phenotype for each package
     for k in list_pack:
-        subjects = _dic_packages[k]
-        phenos = phenotype_df.loc[subjects, phenotype_column].values
-        print(f"Paquet {k}: min={np.nanmin(phenos):.2f}, max={np.nanmax(phenos):.2f}, moy={np.nanmean(phenos):.2f}")
+        positions = _dic_packages[k]
+        vals = phenotype_df.iloc[positions][phenotype_column].values
+        print(f"Package {k}: min={vals.min():.2f}, max={vals.max():.2f}, moy={vals.mean():.2f}")
 
-
-
-    list_pack = [i for i in list_pack if i in _dic_packages]
     print("LIST_PACK:", list_pack)
-
-    
 
     ####################################
     # Averaging for each group of subjects
@@ -556,17 +537,17 @@ def visualize_averages_along_sorted_phenotype(params):
     raw_avgs = []
     print("Longueur list_pack", len(list_pack))
     for i in list_pack:
-        subjects = _dic_packages[i]
+        positions = _dic_packages[i]
+        # For each package, get the subjects
+        subjects = phenotype_df.iloc[positions][subject_column].tolist()
         list_database = [dataset] * len(subjects)
+
         if alignment:
-            sum_vol = buckets_average_with_alignment(_dic_packages[i], list_database,
-                                                     region, side, nb_processors)
+            sum_vol = buckets_average_with_alignment(subjects, list_database,
+                                                    region, side, nb_processors)
         else:
-            sum_vol = buckets_average(_dic_packages[i], list_database,
-                                      region, side)
-            print(f"Nombres de sujets dans le paquet {i} :",len(_dic_packages[i]))
-            #print(f"Liste des sujets dans le paquet {i} :",_dic_packages[i])
-            
+            sum_vol = buckets_average(subjects, list_database, region, side)
+            print(f"Nombres de sujets dans le paquet {i} :", len(subjects))
 
         raw_avgs.append(sum_vol)
 
