@@ -520,8 +520,6 @@ def visualize_averages_along_sorted_phenotype(params):
     print(f"Nombre de paquets de sujets: {n_pack}")
 
 
-
-
     # Process each package of subjects
     # list_pack = [int(np.ceil(i*n_pack/float(nb_windows)))
     #              for i in range(0, nb_windows)]
@@ -549,7 +547,6 @@ def visualize_averages_along_sorted_phenotype(params):
     print("LIST_PACK:", list_pack)
 
     
-
     ####################################
     # Averaging for each group of subjects
     ####################################
