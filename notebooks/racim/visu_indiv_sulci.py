@@ -201,16 +201,32 @@ SUBJECTS_FULLTERMS_CLASSIF_27_ABCD_FCM = [
 ]
 
 
-
 # here select the list 
-SUBJECTS = SUBJECTS_PREMA_CLASSIF_27_ABCD_FCM 
-
+SUBJECTS = SUBJECTS_PREMA_CLASSIF_27_ABCD_FCM
 
 
 
 app = Qt.QApplication.instance() or Qt.QApplication([])
 a = ana.Anatomist()
 windows = []
+w = a.createWindow('3D')
+windows.append(w)
+w.assignReferential(a.centralRef)
+
+if SULCUS_NAME == 'F.C.M.post._right':
+        CAMERA_PARAMS = CAMERA_PARAMS_FCM
+elif SULCUS_NAME == 'S.T.s._right':
+    CAMERA_PARAMS = CAMERA_PARAMS_STS
+else:
+    CAMERA_PARAMS = CAMERA_PARAMS_DEFAULT 
+    
+w.camera(
+    zoom=CAMERA_PARAMS['zoom'],
+    view_quaternion=CAMERA_PARAMS['view_quaternion'],
+    force_redraw=True
+)
+
+
 for subj in SUBJECTS:
 
     da = os.path.join(
@@ -224,10 +240,6 @@ for subj in SUBJECTS:
         da, 'folds', '3.1', 'deepcnn_session_auto',
         f"{HEMISPHERE}{subj}_deepcnn_session_auto.arg"
     )
-
-    w = a.createWindow('3D')
-    windows.append(w)
-    w.assignReferential(a.centralRef)
 
     mesh = a.loadObject(mesh_file, hidden=False)
     mesh.loadReferentialFromHeader()
@@ -283,22 +295,8 @@ for subj in SUBJECTS:
             ana_vertex = vertex['ana_object']
             a.execute('SetMaterial', objects=[ana_vertex], diffuse=[1.0, 0.35, 0.0, 1.0])
 
-
-    if SULCUS_NAME == 'F.C.M.post._right':
-        CAMERA_PARAMS = CAMERA_PARAMS_FCM
-    elif SULCUS_NAME == 'S.T.s._right':
-        CAMERA_PARAMS = CAMERA_PARAMS_STS
-    else:
-        CAMERA_PARAMS = CAMERA_PARAMS_DEFAULT 
-        
-
-    a.camera(
-        windows=[w],
-        zoom=CAMERA_PARAMS['zoom'],
-        view_quaternion=CAMERA_PARAMS['view_quaternion'],
-        force_redraw=True
-    )
-
+    
+  
     snapshot = True
 
 
@@ -306,7 +304,7 @@ for subj in SUBJECTS:
 
     if snapshot:
 
-        save_dir = "/neurospin/dico/rmenasria/Runs/03_main/Program/2025_rmenasria_prematurity/notebooks/racim/anat_snapshots/prema_27_ABCD"
+        save_dir = "/neurospin/dico/rmenasria/Runs/03_main/Output/Figures/anat_snapshots/prema_27_ABCD"
         w.setHasCursor(0)
         fname = f"{subj}_{SULCUS_NAME}.png"
         img_path = os.path.join(save_dir, fname)
@@ -315,7 +313,11 @@ for subj in SUBJECTS:
         # Close the window
         #w.close()
 
-grid_dir = "/neurospin/dico/rmenasria/Runs/03_main/Program/2025_rmenasria_prematurity/notebooks/racim/anat_snapshots/prema_27_ABCD"
+
+    #Remove objects from the window
+    w.removeObjects([mesh, graph, nomenclature])
+
+grid_dir = "/neurospin/dico/rmenasria/Runs/03_main/Output/Figures/anat_snapshots/prema_27_ABCD"
 create_grid(
     image_files=[
         os.path.join(grid_dir, f"{subj}_{SULCUS_NAME}.png") for subj in SUBJECTS
