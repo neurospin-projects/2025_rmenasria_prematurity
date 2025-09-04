@@ -428,7 +428,7 @@ def parse_args(argv):
         "-e", "--phenotype_column", type=str, default="predicted",
         help="Name of column phenotype")
     parser.add_argument(
-        "-t", "--nb_subjects_per_average", type=int, default=250,
+        "-t", "--nb_subjects_per_average", type=int, default=200,
         help="Number of subjects per average.")
     parser.add_argument(
         "-n", "--nb_columns", type=int, default=5,
@@ -512,9 +512,13 @@ def visualize_averages_along_sorted_phenotype(params):
     # n_pack = len(_dic_packages)
 
     _dic_packages = {}
-    for i, start in enumerate(range(0, len(phenotype_df), step)):
-        list_idx = phenotype_df.index[start:start + step].to_numpy()
-        _dic_packages[i] = [f'{idx}' for idx in list_idx]
+    for i in range(0, len(phenotype_df), step):
+        list_idx = phenotype_df.index[i:i + step].to_numpy()
+        _dic_packages[i // step] = [f'{idx}' for idx in list_idx]
+
+    # 250 last subjects
+    _dic_packages[(len(phenotype_df) - 1) // step] = phenotype_df.index[-step:].to_numpy()
+
 
     n_pack = len(_dic_packages) 
     print(f"Nombre de paquets de sujets: {n_pack}")
@@ -532,7 +536,7 @@ def visualize_averages_along_sorted_phenotype(params):
         1,                      # tout début
         n_pack // 3,            # tiers
         2 * n_pack // 3,        # deux tiers
-        n_pack - 2              # fin
+        n_pack -1               # fin
     ]))
 
     # Affichage pour vérifier les valeurs de phénotype
