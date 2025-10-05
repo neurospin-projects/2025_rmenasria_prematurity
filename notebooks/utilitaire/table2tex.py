@@ -3,7 +3,7 @@
 import sys
 import pandas as pd
 
-fn = sys.argv[1] if len(sys.argv) > 1 else "/neurospin/dico/rmenasria/Runs/03_main/Program/2025_rmenasria_prematurity/notebooks/racim/prematurity_classification_dHCP_0708.csv"
+fn = sys.argv[1] if len(sys.argv) > 1 else "/neurospin/dico/rmenasria/Runs/03_main/Output/final/classif_prematurity_dHCP_final_28_32.csv"
 df = pd.read_csv(fn)
 
 # normalize region -> base name + hemi
@@ -27,10 +27,10 @@ def build_rows_for_hemi(df_hemi):
     for reg in sorted(df_hemi['region_base'].unique()):
         row = [esc(reg)]
         for t in tranches:
-            sel = df_hemi[(df_hemi['region_base']==reg) & (df_hemi['tranche']==t)]
+            sel = df_hemi[(df_hemi['region_base']==reg)]
             if not sel.empty:
                 s = sel.iloc[0]
-                row += [f"{s['AUC_mean']:.6f}", f"{s['AUC_std']:.6f}", f"{s['p_value']:.6f}"]
+                row += [f"{s['AUC_mean']:.6f}", f"{s['AUC_std']:.6f}", f"{s['perm_pval']:.6f}"]
             else:
                 row += ['-', '-', '-']
         rows.append(row)
